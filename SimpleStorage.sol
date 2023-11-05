@@ -41,7 +41,7 @@ contract SimpleStorage {
     // creates dictionary like type
     mapping(string => uint256) public nameToFavoriteNumber;
 
-    function store(uint256 _favoriteNumber) public {
+    function store(uint256 _favoriteNumber) public virtual {
         myfavoriteNumber = _favoriteNumber;
     }
 

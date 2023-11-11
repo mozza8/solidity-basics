@@ -7,24 +7,26 @@ pragma solidity 0.8.18;
 
 import {PriceConverter} from "FundMe/PriceConverter.sol";
 
+
+// 809,870
 contract FundMe {
     using PriceConverter for uint256;
 
-    uint public minimumUsd = 5e18;
+    uint public constant MINIMUM_USD = 5e18;
 
     // who sends us money
     address[] public funders;
     mapping(address funder => uint256 amountFunded) public addressToAmountFunded;
 
-    address public owner;
+    address public immutable i_owner;
 
     constructor() {
-        owner = msg.sender;
+        i_owner = msg.sender;
     }
 
     function fund() public payable {
         
-        require(msg.value.getConversionRate() > minimumUsd, "didn't send enough ETH"); // 1e18 = 1ETH
+        require(msg.value.getConversionRate() > MINIMUM_USD, "didn't send enough ETH"); // 1e18 = 1ETH
         // msg.sender = globalna funkcija, ki pove kateri address je poslau
         funders.push(msg.sender);
         addressToAmountFunded[msg.sender] += msg.value;
@@ -52,7 +54,7 @@ contract FundMe {
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Sender is not owner!");
+        require(msg.sender == i_owner , "Sender is not owner!");
         _;
     }
 

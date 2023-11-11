@@ -5,51 +5,56 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.18;
 
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-
+import {PriceConverter} from "FundMe/PriceConverter.sol";
 
 contract FundMe {
-    
+    using PriceConverter for uint256;
+
     uint public minimumUsd = 5e18;
 
     // who sends us money
     address[] public funders;
     mapping(address funder => uint256 amountFunded) public addressToAmountFunded;
 
+    address public owner;
+
+    constructor() {
+        owner = msg.sender;
+    }
+
     function fund() public payable {
-        // Allow users to send $
-        // Have a minimum $ sent $5
-        // 1. How do we send ETH to this contract?
-        require(getConversionRate(msg.value) > minimumUsd, "didn't send enough ETH"); // 1e18 = 1ETH
+        
+        require(msg.value.getConversionRate() > minimumUsd, "didn't send enough ETH"); // 1e18 = 1ETH
         // msg.sender = globalna funkcija, ki pove kateri address je poslau
         funders.push(msg.sender);
-        addressToAmountFunded[msg.sender] = addressToAmountFunded[msg.sender] + msg.value;
+        addressToAmountFunded[msg.sender] += msg.value;
     }
 
-    // function withdraw() public {}
+    function withdraw() public onlyOwner {
+        for(uint256 funderIndex = 0; funderIndex < funders.length; funderIndex++) {
+            address funder = funders[funderIndex];
+            addressToAmountFunded[funder] = 0;
+        }
+        funders = new address[](0);
 
-    function getPrice() public view returns(uint256){
-        // Za Eth
-        // Address 0x694AA1769357215DE4FAC081bf1f309aDC325306
-        // ABI - rabmo za iterakcijo s pogodbo, interface nam to omogoči
-        AggregatorV3Interface priceFeed = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
-        (, int256 price,,,) = priceFeed.latestRoundData();
-        // Price of ETH in terms of USD
-        // 2000.00000000
-        return uint256(price * 1e10);
+        // transfer to contract creator   this = contract
+        // msg.sender = address
+        // payable(msg.sender) = payable address
+        // payable(msg.sender).transfer(address(this).balance);
+
+        // // send
+        // bool sendSuccess = payable(msg.sender).send(address(this).balance);
+        // require(sendSuccess, "Send failed");
+
+        // call
+        (bool callSuccess, ) = payable(msg.sender).call{value: address(this).balance}("");
+        require(callSuccess, "Call failed");
     }
 
-    function getConversionRate(uint256 ethAmount) public view returns(uint256) {
-        // We get price for 1 Eth
-        uint256 ethPrice = getPrice();
-        // Delimo ker imata oba 18 decimalnih mest
-        uint256 ethAmountInUsd = (ethPrice * ethAmount) / 1e18;
-        return ethAmountInUsd;
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Sender is not owner!");
+        _;
     }
 
-    function getVersion() public view returns (uint256) {
-        // here we call functions in that contract
-        return AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306).version();
-    }
-
+    
 }
